@@ -1,19 +1,33 @@
 function onlyUnique(value, index, self) {
     return self.indexOf(value) === index
 }
-
+function getCountCells_(array, reduceCallback) {
+    return array.reduce(reduceCallback, { count: 0, total: 0 });
+}
 function createFinancialReport() {
     let activeSpreadsheet = SpreadsheetApp.getActiveSpreadsheet()
     let sheet = SpreadsheetApp.getActiveSheet()
-    const numRows = 100
-    const numColumns = 10
+    const reduceCallback = (acc, cv) => {
+        const length = cv.length;
+        const count = cv.filter(cell => cell !== '').length;
+        acc.count += count;
+        acc.total += length;
+        return acc;
+    }
+    const countCells = getCountCells_(
+        sheet.getRange(`A1:A${sheet.getLastRow()}`).getValues(),
+        reduceCallback
+    )
+    Logger.log(countCells.count, "rows will be processed")
+    const numRows = countCells.count
+    const numColumns = 5
     let comment = sheet.getRange("List!D2:D").getValues()
     let cards = sheet.getRange("List!B2:B").getValues()
-    let cardsUnique = sheet.getRange(2, 2, numRows, 1).getValues().join().split(",").filter(onlyUnique)
+    let cardsUnique = sheet.getRange(2, 2, numRows-1, 1).getValues().join().split(",").filter(onlyUnique)
     Logger.log(cardsUnique)
     const dict = {
-        'Яндекс.Драйв':'Каршеринг',
-        'Яндекс Такси':'Такси',
+        'Яндекс.Драйв': 'Каршеринг',
+        'Яндекс Такси': 'Такси',
         'Штрафы ГИБДД': 'Платные дороги, штрафы',
         'Супермаркеты': 'Питание (до расчётов)',
         'Фастфуд': 'Питание (до расчётов)',
@@ -38,51 +52,45 @@ function createFinancialReport() {
         '*8711': 'mobile',
         '': 'empty'
     }
-    for (let i = 0; i <= numRows; i++) {
+    Logger.log("Parsing categories")
+    for (let i = 0; i < numRows-1; i++) {
         for (let key in dict) {
             if (comment[i][0].indexOf(key) > -1) {
                 sheet.getRange(i + 2, 5).setValue(dict[key])
-                Logger.log(comment[i][0])
+                Logger.log(comment[i][0], " is ",dict[key])
             }
         }
     }
     Logger.log("Starting card nums processing")
-    for (let i = 0; i <= numRows; i++) {
+    for (let i = 0; i < numRows-1; i++) {
         if (cards[i][0] in cardDict) {
-            Logger.log(cards[i][0])
-            Logger.log(cardDict[cards[i][0]])
+            Logger.log(cards[i][0]," is ",cardDict[cards[i][0]])
             sheet.getRange(i + 2, 2).setValue(cardDict[cards[i][0]])
         }
     }
-    let cardTypesUnique = sheet.getRange(2, 2, numRows, 1).getValues().join().split(",").filter(onlyUnique)
+    let cardTypesUnique = sheet.getRange(2, 2, numRows-1, 1).getValues().join().split(",").filter(onlyUnique)
+    Logger.log("Card types are: ", cardTypesUnique)
+    Logger.log("Creating sheets per card types")
     for (let cardN in cardTypesUnique) {
-        let yourNewSheet = activeSpreadsheet.getSheetByName("Name of your new sheet")
+        let yourNewSheet = activeSpreadsheet.getSheetByName(cardTypesUnique[cardN])
         if (yourNewSheet != null) {
             activeSpreadsheet.deleteSheet(yourNewSheet)
         }
         yourNewSheet = activeSpreadsheet.insertSheet()
-        if (cardTypesUnique[cardN] == '') {
-            yourNewSheet.setName("empty")
-            Logger.log(cardTypesUnique[cardN].toString())
-        } else {
-            yourNewSheet.setName(cardTypesUnique[cardN])
-        }
+        yourNewSheet.setName(cardTypesUnique[cardN])
+        Logger.log(cardTypesUnique[cardN]," list is created")
     }
     let cardTypes = sheet.getRange("List!B2:B").getValues()
     Logger.log("Starting moving rows")
-    for (let i = 0; i <= numColumns; i++) {
-        Logger.log(cardTypes[i][0])
+    for (let i = 0; i < numRows-1; i++) {
         let targetSheet = activeSpreadsheet.getSheetByName(cardTypes[i][0])
-        Logger.log(targetSheet)
         let source = sheet.getRange(i + 2, 1, 1, numColumns).getValues()
-        Logger.log(source)
-        let sourceLine = Array.from({length: 10})
-        for (let i = 0; i <= numRows; i++) {
+        let sourceLine = Array.from({length: numColumns})
+        for (let i = 0; i < numColumns; i++) {
             sourceLine[i] = source[0][i]
         }
-        Logger.log(sourceLine)
+        Logger.log("Moving line to list",cardTypes[i][0], ". Line data:", sourceLine)
         targetSheet.appendRow(sourceLine)
     }
-
+    Logger.log("Finished processing")
 }
-
