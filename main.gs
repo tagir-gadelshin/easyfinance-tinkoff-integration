@@ -18,10 +18,11 @@ function createFinancialReport() {
         sheet.getRange(`A1:A${sheet.getLastRow()}`).getValues(),
         reduceCallback
     )
-    Logger.log(countCells.count, "rows will be processed")
+    Logger.log('%s rows will be processed', countCells.count)
     const numRows = countCells.count
     const numColumns = 5
     let comment = sheet.getRange("List!D2:D").getValues()
+    let sum = sheet.getRange("List!C2:C").getValues()
     let cards = sheet.getRange("List!B2:B").getValues()
     let cardsUnique = sheet.getRange(2, 2, numRows-1, 1).getValues().join().split(",").filter(onlyUnique)
     Logger.log(cardsUnique)
@@ -34,10 +35,16 @@ function createFinancialReport() {
         'Рестораны': 'Питание (до расчётов)',
         'Жкх': 'Коммунальные платежи',
         'Московский транспорт': 'Общественный транспорт',
+        'Метрополитен': 'Общественный транспорт',
         'Интернет': 'Интернет и ТВ',
         'МТС': 'Сотовый телефон',
         'Parkomat': 'Стоянка',
-        'Ремонт': 'Ремонт недвижимости'
+        'Abakarov': 'Стоянка',
+        'Ремонт': 'Ремонт недвижимости',
+        'ремонт': 'Ремонт недвижимости',
+        'Топливо': 'Топливо',
+        'Транспорт Pvp': 'Платные дороги, штрафы',
+        'USD':'USD'
     }
     const cardDict = {
         '*1422': 'cred',
@@ -54,22 +61,32 @@ function createFinancialReport() {
     }
     Logger.log("Parsing categories")
     for (let i = 0; i < numRows-1; i++) {
+      if (sum [i][0] > 0) {
+        sheet.getRange(i + 2, 5).setValue('Импорт (доход)')
+      } else if (sum[i][0] < 0) {
+        sheet.getRange(i + 2, 5).setValue('Импорт (расход)')
+      }
+    }
+    for (let i = 0; i < numRows-1; i++) {
         for (let key in dict) {
-            if (comment[i][0].indexOf(key) > -1) {
-                sheet.getRange(i + 2, 5).setValue(dict[key])
-                Logger.log(comment[i][0], " is ",dict[key])
+          if (comment[i][0].indexOf(key) > -1) {
+            sheet.getRange(i + 2, 5).setValue(dict[key])
+            Logger.log('%s is %s', comment[i][0], dict[key])
             }
         }
     }
     Logger.log("Starting card nums processing")
     for (let i = 0; i < numRows-1; i++) {
-        if (cards[i][0] in cardDict) {
-            Logger.log(cards[i][0]," is ",cardDict[cards[i][0]])
+        if ((cards[i][0] in cardDict) && (comment[i][0].indexOf('USD') > -1)) {
+            Logger.log('%s with comment: %s is USD',cards[i][0],comment[i][0])
+            sheet.getRange(i + 2, 2).setValue('USD')
+        } else if (cards[i][0] in cardDict) {
+            Logger.log('%s is %s',cards[i][0],cardDict[cards[i][0]])
             sheet.getRange(i + 2, 2).setValue(cardDict[cards[i][0]])
         }
     }
     let cardTypesUnique = sheet.getRange(2, 2, numRows-1, 1).getValues().join().split(",").filter(onlyUnique)
-    Logger.log("Card types are: ", cardTypesUnique)
+    Logger.log('Card types are: %s', cardTypesUnique)
     Logger.log("Creating sheets per card types")
     for (let cardN in cardTypesUnique) {
         let yourNewSheet = activeSpreadsheet.getSheetByName(cardTypesUnique[cardN])
@@ -78,7 +95,7 @@ function createFinancialReport() {
         }
         yourNewSheet = activeSpreadsheet.insertSheet()
         yourNewSheet.setName(cardTypesUnique[cardN])
-        Logger.log(cardTypesUnique[cardN]," list is created")
+        Logger.log('%s list is created', cardTypesUnique[cardN])
     }
     let cardTypes = sheet.getRange("List!B2:B").getValues()
     Logger.log("Starting moving rows")
@@ -89,7 +106,7 @@ function createFinancialReport() {
         for (let i = 0; i < numColumns; i++) {
             sourceLine[i] = source[0][i]
         }
-        Logger.log("Moving line to list",cardTypes[i][0], ". Line data:", sourceLine)
+        Logger.log('Moving line to list %s. Line data: %s',cardTypes[i][0],sourceLine)
         targetSheet.appendRow(sourceLine)
     }
     Logger.log("Finished processing")
