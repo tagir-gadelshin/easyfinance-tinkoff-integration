@@ -56,23 +56,22 @@ function createFinancialReport() {
         '*3443': 'schet',
         '*7000': 'debet',
         '*9891': 'debet',
+        '*7560': 'debet',
         '*8711': 'mobile',
+        '*7522': 'anna',
         '': 'empty'
     }
     Logger.log("Parsing categories")
     for (let i = 0; i < numRows-1; i++) {
-      if (sum [i][0] > 0) {
-        sheet.getRange(i + 2, 5).setValue('Импорт (доход)')
-      } else if (sum[i][0] < 0) {
-        sheet.getRange(i + 2, 5).setValue('Импорт (расход)')
-      }
-    }
-    for (let i = 0; i < numRows-1; i++) {
         for (let key in dict) {
-          if (comment[i][0].indexOf(key) > -1) {
-            sheet.getRange(i + 2, 5).setValue(dict[key])
-            Logger.log('%s is %s', comment[i][0], dict[key])
-            }
+            if (comment[i][0].indexOf(key) > -1) {
+                sheet.getRange(i + 2, 5).setValue(dict[key])
+                Logger.log('%s is %s', comment[i][0], dict[key])
+            } else if ((sum[i][0] > 0) && (comment[i][0].indexOf(key) < -1)) {
+            sheet.getRange(i + 2, 5).setValue('Импорт (доход)')
+            } else if ((sum[i][0] < 0) && (comment[i][0].indexOf(key) < -1)) {
+            sheet.getRange(i + 2, 5).setValue('Импорт (расход)')
+            } 
         }
     }
     Logger.log("Starting card nums processing")
@@ -83,6 +82,9 @@ function createFinancialReport() {
         } else if (cards[i][0] in cardDict) {
             Logger.log('%s is %s',cards[i][0],cardDict[cards[i][0]])
             sheet.getRange(i + 2, 2).setValue(cardDict[cards[i][0]])
+        } else {
+          Logger.log('ERROR: %s is not recognized card in row %s. Please, add it in the dictionary first.',cards[i][0],i+2)
+          return
         }
     }
     let cardTypesUnique = sheet.getRange(2, 2, numRows-1, 1).getValues().join().split(",").filter(onlyUnique)
